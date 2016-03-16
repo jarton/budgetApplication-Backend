@@ -101,7 +101,7 @@ describe("server tests", function () {
 
 			setTimeout(function() {
 				request.get({
-					url: 'http://testUser1:1234@localhost:5984/testUser1/test-category2',
+					url: 'http://testUser2:1234@localhost:5984/testUser2/test-category2',
 				},
 				function(err, res, body){
 					if (err) {
