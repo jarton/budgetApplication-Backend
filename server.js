@@ -1,3 +1,6 @@
+//TODO make sure to add gulp-exit, socket.io, pouchdb-server and pouchdb as --save-dev
+//TODO jsDoc?
+//TODO Typo dependencies
 // dependecies
 var app = require('express')();
 var server = require('http').Server(app);
@@ -15,12 +18,14 @@ PouchDB.adapter('writableStream', replicationStream.adapters.writableStream);
 // login and url for backend server with admin credentials
 var adminUser = 'http://admin:devonly@127.0.0.1:5984/';
 
+// TODO typo variables
 // varables used for server
 var port = 6969;
 var success = 200;
 var shareReq = {};
 var users = {};
 
+//TODO typo authentication and logging
 // calls db and uses its authentaction via http locally for loggin in
 function dbAuth(uname, pwd, callback) {
 	// login request
@@ -70,6 +75,7 @@ require('socketio-auth')(io, {
 			if (name === data.username) {
 				socket.emit('shareReq', shareReq[name]);
 			}
+			//TODO unnecessary semicolon below
 		};
 
 	}
@@ -79,6 +85,7 @@ require('socketio-auth')(io, {
 app.get('/register', function (req, res) {
 	var user = basicAuth(req); 
 
+	//TODO typo calls
 	// cals database and puts the user in the user doc
 	request.put({
 		url: adminUser + '_users/org.couchdb.user:'+ user.name,
@@ -99,11 +106,13 @@ app.get('/register', function (req, res) {
 				value: 'application/json'
 			}
 		],
+		//TODO unnecessary comma above
 	}, function() {
 		// creates a database with the users name
 		request.put({
 			url: adminUser + user.name 
 		}, function() {
+			// TODO typo access
 			// restricts acess to the new database to only the user
 			request.put({
 				url: adminUser + user.name + '/_security',
@@ -129,6 +138,7 @@ app.get('/register', function (req, res) {
 						value: 'application/json'
 					}
 				],
+				//TODO unnecessary comma above
 			}, function () {
 				res.sendStatus(success);
 			});
@@ -171,6 +181,7 @@ io.on('connection', function(socket) {
 				found = true;
 			}
 		};
+		//TODO unnecessary colon above, and after the if sentence below
 
 		// else store for later
 		if (!found) {
@@ -178,11 +189,13 @@ io.on('connection', function(socket) {
 		};
 	});
 
+	//TODO typo response
 	// on reponse to share request
 	socket.on('shareResp', function(data){
 		var username = socket.client.username;
 		// if request exists and answer to share is yes
 		if ((data.accept === 'yes') && (shareReq[username] !== undefined)) {
+			//TODO typo database
 			// tell databse to replicate selected doc between users
 			request.post({
 				url: adminUser+ '_replicate',
