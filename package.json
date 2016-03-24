@@ -15,6 +15,7 @@
     "http": "0.0.0",
     "pouchdb-replication-stream": "^1.2.6",
     "request": "^2.69.0",
+    "socket.io": "^1.4.5",
     "socket.io-client": "^1.4.5",
     "socket.io-stream": "^0.9.0",
     "socketio-auth": "0.0.5"
@@ -26,10 +27,13 @@
     "git-guppy": "^1.1.0",
     "gulp": "^3.9.1",
     "gulp-eslint": "^2.0.0",
+    "gulp-exit": "0.0.2",
     "gulp-istanbul": "^0.10.3",
     "gulp-mocha": "^2.2.0",
     "guppy-pre-commit": "^0.3.0",
     "memdown": "^1.1.2",
-    "mocha": "^2.4.5"
+    "mocha": "^2.4.5",
+    "pouchdb": "^5.3.1",
+    "pouchdb-server": "^1.1.1"
   }
 }

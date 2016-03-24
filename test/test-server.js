@@ -1,7 +1,5 @@
 var chai = require('chai');
-var chaiHttp = require('chai-http');
 var should = chai.should();
-var spawn = require('child_process').spawn;
 var request = require('request');
 var io = require('socket.io-client');
 var ioStream = require('socket.io-stream');
@@ -30,11 +28,9 @@ describe("server tests", function () {
 		});
 	});
 
-	//TODO typo registering, and missing "should"
-	it("regestering a user give back 200 status code", function (done) {
+	it("registration of a user should give back 200 status code", function (done) {
 		request.get({
-			url: 'http://testUser1:1234@localhost:6969/register',
-			//TODO remove comma above
+			url: 'http://testUser1:1234@localhost:6969/register'
 		},
 		function(err, res, body){
 			res.statusCode.should.equal(200);	
@@ -42,11 +38,9 @@ describe("server tests", function () {
 		});	
 	});
 
-	//TODO typo "registering" and "user"
-	it("regestering a user should put the uesr in the database", function (done) {
+	it("registering a user should put the user in the database", function (done) {
 		request.get({
-			url: 'http://testUser2:1234@localhost:6969/register',
-			//TODO remove comma above
+			url: 'http://testUser2:1234@localhost:6969/register'
 		},
 		function(err, res, body){
 			request.get({
@@ -54,8 +48,7 @@ describe("server tests", function () {
 			},
 			function(err, res, body){
 				if (err) {
-					//TODO missing semicolon below
-					should.fail()
+					should.fail();
 					done();	
 				}
 				else {
@@ -67,8 +60,7 @@ describe("server tests", function () {
 		});	
 	});
 
-	//TODO typo accept
-	it("should accecpt correct login information", function (done) {
+	it("should accept correct login information", function (done) {
 		var client= io.connect('http://localhost:6969');
 
 		client.emit('authentication', {
@@ -107,13 +99,11 @@ describe("server tests", function () {
 
 			setTimeout(function() {
 				request.get({
-					//TODO remove comma below
-					url: 'http://testUser2:1234@localhost:5984/testUser2/test-category2',
+					url: 'http://testUser2:1234@localhost:5984/testUser2/test-category2'
 				},
 				function(err, res, body){
 					if (err) {
-						//TODO missing semicolon below
-						should.fail()
+						should.fail();
 						done();	
 					}
 					else {
@@ -143,13 +133,11 @@ describe("server tests", function () {
 
 				setTimeout(function() {
 					request.get({
-						//TODO remove comma below
-						url: 'http://testUser2:1234@localhost:5984/testUser2/testpull',
+						url: 'http://testUser2:1234@localhost:5984/testUser2/testpull'
 					},
 					function(err, res, body){
 						if (err) {
-							//TODO missing semicolon below
-							should.fail()
+							should.fail();
 							done();	
 						}
 						else {
@@ -166,17 +154,16 @@ describe("server tests", function () {
 
 	it("notify a user if another wants to share a budgetPost while they are online", function (done) {
 		var sender = io.connect('http://localhost:6969');
-		//TODO typo receiver
-		var reciver = io.connect('http://localhost:6969');
+		var receiver = io.connect('http://localhost:6969');
 
-		reciver.emit('authentication', {
+		receiver.emit('authentication', {
 			username: "testUser2", password: "1234"
 		});
 
-		reciver.on('authenticated', function() {
-			reciver.on('shareReq', function(shareObj) {
+		receiver.on('authenticated', function() {
+			receiver.on('shareReq', function(shareObj) {
 				shareObj.doc.should.equal('test-category');
-				reciver.disconnect();
+				receiver.disconnect();
 				done();
 			});
 		});
@@ -201,14 +188,14 @@ describe("server tests", function () {
 			sender.emit('shareReq', {userName:'testUser1', docName:'test-category'});
 			sender.disconnect();
 
-			var reciver = io.connect('http://localhost:6969');
-			reciver.emit('authentication', {
+			var receiver = io.connect('http://localhost:6969');
+			receiver.emit('authentication', {
 				username: "testUser1", password: "1234"
 			});
-			reciver.on('authenticated', function() {
-				reciver.on('shareReq', function(shareObj) {
+			receiver.on('authenticated', function() {
+				receiver.on('shareReq', function(shareObj) {
 					shareObj.doc.should.equal('test-category');
-					reciver.disconnect();
+					receiver.disconnect();
 					done();
 				});
 			});
@@ -228,28 +215,26 @@ describe("server tests", function () {
 			sender.emit('shareReq', {userName:'testUser1', docName:'test-category2'});
 			sender.disconnect();
 
-			var reciver = io.connect('http://localhost:6969');
-			reciver.emit('authentication', {
+			var receiver = io.connect('http://localhost:6969');
+			receiver.emit('authentication', {
 				username: "testUser1", password: "1234"
 			});
-			reciver.on('authenticated', function() {
-				reciver.on('shareReq', function(shareObj) {
-					reciver.emit('shareResp', {accept: 'yes'});
+			receiver.on('authenticated', function() {
+				receiver.on('shareReq', function(shareObj) {
+					receiver.emit('shareResp', {accept: 'yes'});
 					setTimeout(function(){
 						request.get({
-							//TODO remove comma below
-							url: 'http://testUser1:1234@localhost:5984/testUser1/test-category2',
+							url: 'http://testUser1:1234@localhost:5984/testUser1/test-category2'
 						},
 						function(err, res, body){
 							if (err) {
-								//TODO missing semicolon
-								should.fail()
+								should.fail();
 								done();	
 							}
 							else {
 								var parsed = JSON.parse(body);
 								parsed.title.should.equal('user2');
-								reciver.disconnect();
+								receiver.disconnect();
 								done();
 							}
 						});	

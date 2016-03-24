@@ -1,3 +1,0 @@
-[Tue, 15 Mar 2016 14:19:38 GMT] [info] [<0.000.0>] pouchdb-server has started on http://127.0.0.1:5984/
-[Tue, 15 Mar 2016 14:19:38 GMT] [info] [<0.000.0>] database is in-memory; no changes will be saved.
-[Tue, 15 Mar 2016 14:19:38 GMT] [info] [<0.000.0>] navigate to http://127.0.0.1:5984/_utils for the Fauxton UI.
