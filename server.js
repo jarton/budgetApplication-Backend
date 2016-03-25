@@ -21,7 +21,7 @@ var success = 200;
 var shareReq = {};
 var users = {};
 
-// calls db and uses its authentiaction via http locally for logging in
+// calls db and uses its authentication via http locally for logging in
 function dbAuth(uname, pwd, callback) {
 	// login request
 	request.post({
@@ -175,7 +175,7 @@ io.on('connection', function(socket) {
 		// else store for later
 		if (!found) {
 			shareReq[data.userName] = shareObj;
-		};
+		}
 	});
 
 	// on response to share request
