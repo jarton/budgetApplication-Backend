@@ -1,0 +1,13 @@
+var winston = require('winston');
+
+module.exports = new (winston.Logger)({
+	transports: [
+		new (winston.transports.Console)({
+			colorize: 'all'	
+		}),
+		new (winston.transports.File)({
+			filename: './logs/log.log'
+		})
+	]
+});
+

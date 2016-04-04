@@ -29,8 +29,14 @@ describe("server tests", function () {
 	});
 
 	it("registration of a user should give back 200 status code", function (done) {
-		request.get({
-			url: 'http://testUser1:1234@localhost:6969/register'
+		request.post({
+			url: 'http://localhost:6969/register',
+			json: true,
+			body: {
+				method: 'db',
+				username: 'testUser1',
+				password: '1234'
+			}
 		},
 		function(err, res, body){
 			res.statusCode.should.equal(200);	
@@ -39,25 +45,33 @@ describe("server tests", function () {
 	});
 
 	it("registering a user should put the user in the database", function (done) {
-		request.get({
-			url: 'http://testUser2:1234@localhost:6969/register'
+		request.post({
+			url: 'http://localhost:6969/register',
+			json: true,
+			body: {
+				method: 'db',
+				username: 'testUser2',
+				password: '1234'
+			}
 		},
 		function(err, res, body){
 			request.get({
 				url: 'http://admin:devonly@localhost:5984/_users/org.couchdb.user:testUser2'
 			},
 			function(err, res, body){
-				if (err) {
+				var parsed = JSON.parse(body);
+				if (parsed.error) {
 					should.fail();
-					done();	
+					done();
 				}
 				else {
-					var parsed = JSON.parse(body);
 					parsed.name.should.equal('testUser2');
 					done();
 				}
-			});
-		});	
+			}
+			);
+		}
+		);
 	});
 
 	it("should accept correct login information", function (done) {
