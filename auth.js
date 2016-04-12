@@ -8,6 +8,12 @@ var success = 200;
 module.exports = {
 
 
+	/**
+	 * Calls facebook api to check if the acess token for the user is valid.
+	 * uses callback with (err, res) format.
+	 * @param {string} token users access token
+	 * @param {function} callback
+	 */
 	facebookAuth: function(token, callback) {
 		var hash = crypto.createHmac('sha256', appSecretFB)
 		.update(token)
@@ -15,31 +21,45 @@ module.exports = {
 		request.get({
 			url: 'https://graph.facebook.com/v2.5/me?fields=id,name&access_token=' + token + '&appsecret_proof='+ hash.toString('hex')
 		}, function (error, response) {
-			logger.info('fb api call for user: ' + response.body.name);
+			var res = JSON.parse(response.body);
+			logger.info('fb api call for user: ' + res.name);
 			if (!error && response.statusCode === success) {
-				return callback(response)
+				return callback(undefined, res)
 			}
 			else {
-				return callback(response.statusCode);
+				return callback(res);
 			}
 		});
 	},
 
+	/**
+	 * Calls google api to check if the id token is valid.
+	 * uses callback with (err, res) format.
+	 * @param {string} token users access token
+	 * @param {function} callback
+	 */
 	googleAuth: function(token, callback) {
 		request.get({
-			url: 'https://www.googleapis.com/oauth2/v3/tokeninfo?id_token='  + token
+			url: 'https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=' + token
 		}, function (error, response) {
 			var res = JSON.parse(response.body);
 			logger.info('google api call for user: ' + res.sub);
 			if (!error && response.statusCode === success) {
-				return callback(res)
+				return callback(undefined, res)
 			}
 			else {
-				return callback('fail');
+				return callback(res);
 			}
 		});
 	},
 
+
+	/**
+	 * Calls couchdb server to check the credentials of the user.
+	 * uses callback with (err, res) format.
+	 * @param {string} token users access token
+	 * @param {function} callback
+	 */
 	dbAuth: function(uname, pwd, callback) {
 		// login request
 		request.post({

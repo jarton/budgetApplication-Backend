@@ -38,9 +38,10 @@ require('socketio-auth')(io, {
 			}
 		}
 
-		function oauthResponse(res) {
-			if (res === fail) {
-				logger.warn('oauth failed: ' + data.token)	
+		function oauthResponse(err, res) {
+			if (err) {
+				logger.warn('oauth failed: ' + err)	
+				login(err);
 			}
 			else {
 				if (res.sub) { //google
@@ -51,37 +52,37 @@ require('socketio-auth')(io, {
 					socket.client.username = res.id;	
 					socket.client.name = res.name;
 				}
+				login(undefined);
 			}
 		}
 
 		if (data.token) {
-			console.info('login: ' + data);
 			if (data.token.length > googleTokenLength) {
-				auth.googleAuth(data, oauthResponse);
+				auth.googleAuth(data.token, oauthResponse);
 			}
 			else {
-				auth.facebookAuth(data, oauthResponse);
+				auth.facebookAuth(data.token, oauthResponse);
 			}
 		}
 		else {
-			var username = data.username;
-			var password = data.password;
-			auth.dbAuth(username, password, login);
+			auth.dbAuth(data.username, data.password, login);
 		}
 	},
-// after login add user to list of users
-postAuthenticate: function (socket, data) {
-	logger.info('user: ' + data.username + ' has logged in');
-	users[data.username] = socket.id;
-	socket.client.username = data.username;
-	// if user logs in and has a pending share request this will send it
-	for(var name in shareReq){
-		if (name === data.username) {
-			socket.emit('shareReq', shareReq[name]);
+	// after login add user to list of users
+	postAuthenticate: function (socket, data) {
+		if (data.username) { //dbauth was used
+			socket.client.name = data.username;
+			socket.client.username = data.username;
+		}
+		logger.info('user: ' + socket.client.name + ' has logged in');
+		users[socket.client.name] = socket.id;
+		// if user logs in and has a pending share request this will send it
+		for(var name in shareReq){
+			if (name === data.username) {
+				socket.emit('shareReq', shareReq[name]);
+			}
 		}
 	}
-
-}
 });
 
 // socket connection
@@ -89,8 +90,8 @@ io.on('connection', function(socket) {
 
 	// remove user when socket closes
 	socket.on('disconnect', function () {
-		logger.info('user: ' + socket.client.username+ ' has logged out');
-		delete users[socket.client.username];
+		logger.info('user: ' + socket.client.name + ' has logged out');
+		delete users[socket.client.name];
 	});
 
 	// load changes from client database
@@ -134,27 +135,27 @@ io.on('connection', function(socket) {
 	socket.on('shareResp', function(data){
 		var username = socket.client.username;
 		logger.info('user: ' + socket.client.username 
-				+ ' has reponded to a share request from: ' + shareReq[username].sender);
-		// if request exists and answer to share is yes
-		if ((data.accept === 'yes') && (shareReq[username] !== undefined)) {
-			// tell database to replicate selected doc between users
-			request.post({
-				url: adminUser+ '_replicate',
-				json: true,
-				body: {
-					source: adminUser+shareReq[username].sender,
-					target: adminUser+username,
-					doc_ids: [shareReq[username].doc],
-					continuous: true
-				},
-				headers: [
-					{
-						name: 'content-type',
-						value: 'application/json'
+					+ ' has reponded to a share request from: ' + shareReq[username].sender);
+					// if request exists and answer to share is yes
+					if ((data.accept === 'yes') && (shareReq[username] !== undefined)) {
+						// tell database to replicate selected doc between users
+						request.post({
+							url: adminUser+ '_replicate',
+							json: true,
+							body: {
+								source: adminUser+shareReq[username].sender,
+								target: adminUser+username,
+								doc_ids: [shareReq[username].doc],
+								continuous: true
+							},
+							headers: [
+								{
+									name: 'content-type',
+									value: 'application/json'
+								}
+							]
+						}); 
 					}
-				]
-			}); 
-		}
 	});
 });
 

@@ -74,6 +74,71 @@ describe("server tests", function () {
 		);
 	});
 
+	it("one should be able to register with facebook token", function (done) {
+		var testUser;
+		request.get({
+			url: 'https://graph.facebook.com/oauth/access_token?client_id=187079694982178&client_secret=82f6c63e28ce9bef1eedf02897b51c5b&grant_type=client_credentials'
+		},
+		function(err, res, body){
+			request.get({
+				url: 'https://graph.facebook.com/187079694982178/accounts/test-users?'+body
+			},
+			function(err, res, body){
+				testUser = JSON.parse(body).data[1];
+				request.post({
+					url: 'http://localhost:6969/register',
+					json: true,
+					body: {
+						method: 'oauth',
+						service: 'fb',
+						token: testUser.access_token
+					}
+				}, 
+				function (err, res, body) {
+					request.get({
+						url: 'http://admin:devonly@localhost:5984/' + testUser.id
+					},
+					function(err, res, body){
+						var parsed = JSON.parse(body);
+						if (parsed.error) {
+							should.fail();
+							done();
+						}
+						else {
+							parsed.db_name.should.equal(testUser.id);
+							done();
+						}
+					});
+				});
+			});
+		});
+	});
+
+	it("one should be able to login with facebook token", function (done) {
+		var testUser;
+		request.get({
+			url: 'https://graph.facebook.com/oauth/access_token?client_id=187079694982178&client_secret=82f6c63e28ce9bef1eedf02897b51c5b&grant_type=client_credentials'
+		},
+		function(err, res, body){
+			request.get({
+				url: 'https://graph.facebook.com/187079694982178/accounts/test-users?'+body
+			},
+			function(err, res, body){
+				testUser = JSON.parse(body).data[1];
+				var client= io.connect('http://localhost:6969');
+
+				client.emit('authentication', {
+					token: testUser.access_token
+				});
+
+				client.on('authenticated', function() {
+					client.disconnect();
+					done();
+				});
+			});
+		});
+	});
+
 	it("should accept correct login information", function (done) {
 		var client= io.connect('http://localhost:6969');
 
