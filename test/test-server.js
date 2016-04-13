@@ -151,7 +151,7 @@ describe("server tests", function () {
 		var client= io.connect('http://localhost:6969');
 
 		client.emit('authentication', {
-			username: "testUser2", password: "1234"
+			email: "testUser2", password: "1234"
 		});
 
 		client.on('authenticated', function() {
@@ -164,7 +164,7 @@ describe("server tests", function () {
 		var client= io.connect('http://localhost:6969');
 
 		client.emit('authentication', {
-			username: "testUser2", password: "4"
+			email: "testUser2", password: "4"
 		});
 		client.on('unauthorized', function(err){
 			client.disconnect();
@@ -177,7 +177,7 @@ describe("server tests", function () {
 		var client= io.connect('http://localhost:6969');
 
 		client.emit('authentication', {
-			username: "testUser2", password: "1234"
+			email: "testUser2", password: "1234"
 		});
 		client.on('authenticated', function(err){
 			var stream = ioStream.createStream();
@@ -211,7 +211,7 @@ describe("server tests", function () {
 			var client= io.connect('http://localhost:6969');
 
 			client.emit('authentication', {
-				username: "testUser2", password: "1234"
+				email: "testUser2", password: "1234"
 			});
 			client.on('authenticated', function(err){
 				var stream = ioStream.createStream();
@@ -244,7 +244,7 @@ describe("server tests", function () {
 		var receiver = io.connect('http://localhost:6969');
 
 		receiver.emit('authentication', {
-			username: "testUser2", password: "1234"
+			email: "testUser2", password: "1234"
 		});
 
 		receiver.on('authenticated', function() {
@@ -256,10 +256,10 @@ describe("server tests", function () {
 		});
 
 		sender.emit('authentication', {
-			username: "testUser1", password: "1234"
+			email: "testUser1", password: "1234"
 		});
 		sender.on('authenticated', function() {
-			sender.emit('shareReq', {userName:'testUser2', docName:'test-category'});
+			sender.emit('shareReq', {username:'testUser2', docName:'test-category'});
 			sender.disconnect();
 		});
 	});
@@ -268,16 +268,16 @@ describe("server tests", function () {
 		var sender = io.connect('http://localhost:6969');
 
 		sender.emit('authentication', {
-			username: "testUser2", password: "1234"
+			email: "testUser2", password: "1234"
 		});
 
 		sender.on('authenticated', function() {
-			sender.emit('shareReq', {userName:'testUser1', docName:'test-category'});
+			sender.emit('shareReq', {username:'testUser1', docName:'test-category'});
 			sender.disconnect();
 
 			var receiver = io.connect('http://localhost:6969');
 			receiver.emit('authentication', {
-				username: "testUser1", password: "1234"
+				email: "testUser1", password: "1234"
 			});
 			receiver.on('authenticated', function() {
 				receiver.on('shareReq', function(shareObj) {
@@ -295,16 +295,16 @@ describe("server tests", function () {
 		var sender = io.connect('http://localhost:6969');
 
 		sender.emit('authentication', {
-			username: "testUser2", password: "1234"
+			email: "testUser2", password: "1234"
 		});
 
 		sender.on('authenticated', function() {
-			sender.emit('shareReq', {userName:'testUser1', docName:'test-category2'});
+			sender.emit('shareReq', {username:'testUser1', docName:'test-category2'});
 			sender.disconnect();
 
 			var receiver = io.connect('http://localhost:6969');
 			receiver.emit('authentication', {
-				username: "testUser1", password: "1234"
+				email: "testUser1", password: "1234"
 			});
 			receiver.on('authenticated', function() {
 				receiver.on('shareReq', function(shareObj) {

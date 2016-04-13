@@ -13,7 +13,8 @@ module.exports = {
 	 * Calls facebook api to check if the acess token for the user is valid.
 	 * uses callback with (err, res) format.
 	 * @param {string} token users access token
-	 * @param {function} callback
+	 * @param {function} callback function
+	 * @returns {undefined} nothing
 	 */
 	facebookAuth: function(token, callback) {
 		var hash = crypto.createHmac('sha256', appSecretFB)
@@ -37,7 +38,8 @@ module.exports = {
 	 * Calls google api to check if the id token is valid.
 	 * uses callback with (err, res) format.
 	 * @param {string} token users access token
-	 * @param {function} callback
+	 * @param {function} callback function
+	 * @returns {undefined} nothing
 	 */
 	googleAuth: function(token, callback) {
 		request.get({
@@ -58,13 +60,15 @@ module.exports = {
 	/**
 	 * Calls couchdb server to check the credentials of the user.
 	 * uses callback with (err, res) format.
-	 * @param {string} token users access token
-	 * @param {function} callback
+	 * @param {string} email users email
+	 * @param {string} pwd users password
+	 * @param {function} callback function
+	 * @returns {undefined} nothing
 	 */
 	dbAuth: function(email, pwd, callback) {
 		// login request
 		
-		var uname helpers.convertEmail(email);
+		var uname = helpers.convertEmail(email);
 		
 		request.post({
 			url: adminUser+ '_session',

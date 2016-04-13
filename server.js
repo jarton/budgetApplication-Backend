@@ -10,6 +10,7 @@ var replicationStream = require('pouchdb-replication-stream');
 var logger = require('./logger.js');
 require('./register.js')(app);
 var auth = require('./auth.js');
+var helpers = require('./helpers.js');
 
 // make backend server able to replicate to/from stream
 PouchDB.plugin(replicationStream.plugin);
@@ -70,15 +71,15 @@ require('socketio-auth')(io, {
 	},
 	// after login add user to list of users
 	postAuthenticate: function (socket, data) {
-		if (data.username) { //dbauth was used
-			socket.client.name = data.username;
-			socket.client.username = data.username;
+		if (data.email) { //dbauth was used
+			socket.client.username = helpers.convertEmail(data.email);
+			socket.client.email = data.email;
 		}
-		logger.info('user: ' + socket.client.name + ' has logged in');
-		users[socket.client.name] = socket.id;
+		logger.info('user: ' + socket.client.username + ' has logged in');
+		users[socket.client.username] = socket.id;
 		// if user logs in and has a pending share request this will send it
 		for(var name in shareReq){
-			if (name === data.username) {
+			if (name === socket.client.username) {
 				socket.emit('shareReq', shareReq[name]);
 			}
 		}
@@ -90,8 +91,8 @@ io.on('connection', function(socket) {
 
 	// remove user when socket closes
 	socket.on('disconnect', function () {
-		logger.info('user: ' + socket.client.name + ' has logged out');
-		delete users[socket.client.name];
+		logger.info('user: ' + socket.client.username+ ' has logged out');
+		delete users[socket.client.username];
 	});
 
 	// load changes from client database
@@ -110,7 +111,7 @@ io.on('connection', function(socket) {
 
 	// share budget docuemnt request
 	socket.on('shareReq', function(data){
-		logger.info('user: ' + socket.client.username+ ' is sending a share request to: ' + data.userName);
+		logger.info('user: ' + socket.client.username+ ' is sending a share request to: ' + data.username);
 		var shareObj = {
 			doc: data.docName,
 			sender: socket.client.username 
@@ -119,7 +120,7 @@ io.on('connection', function(socket) {
 
 		//check if user is online and send request if that is the case
 		for(var name in users){
-			if (name === data.userName) {
+			if (name === data.username) {
 				socket.broadcast.to(users[name]).emit('shareReq', shareObj);
 				found = true;
 			}
@@ -127,7 +128,7 @@ io.on('connection', function(socket) {
 
 		// else store for later
 		if (!found) {
-			shareReq[data.userName] = shareObj;
+			shareReq[data.username] = shareObj;
 		}
 	});
 
