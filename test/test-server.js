@@ -5,15 +5,16 @@ var io = require('socket.io-client');
 var ioStream = require('socket.io-stream');
 var PouchDB = require('pouchdb');
 
-
 describe("server tests", function () {
 
 	var server;
+	var helpers;
 	var testUser1db = new PouchDB('user1', {db: require('memdown')});
 	var testUser2db = new PouchDB('user2', {db: require('memdown')});
 
 	beforeEach(function (done) {
 		server = require('../server');
+		helpers = require('../helpers');
 		testUser1db.put({
 			_id: 'test-category1',
 			title: 'user1'
@@ -28,13 +29,20 @@ describe("server tests", function () {
 		});
 	});
 
+	it("convert email works", function() {
+		var email = "test_me@internet.com";
+		var res = "test_me$internet+com";
+		email = helpers.convertEmail(email);
+		email.should.equal(res);
+	});
+
 	it("registration of a user should give back 200 status code", function (done) {
 		request.post({
 			url: 'http://localhost:6969/register',
 			json: true,
 			body: {
 				method: 'db',
-				username: 'testUser1',
+				email: 'testUser1',
 				password: '1234'
 			}
 		},
@@ -50,7 +58,7 @@ describe("server tests", function () {
 			json: true,
 			body: {
 				method: 'db',
-				username: 'testUser2',
+				email: 'testUser2',
 				password: '1234'
 			}
 		},

@@ -2,6 +2,7 @@ var bodyParser = require('body-parser');
 var request = require('request');
 var logger = require('./logger.js');
 var auth = require('./auth.js');
+var helpers = require('./helpers.js');
 
 /**
  * Sets up express app, and routing.
@@ -20,7 +21,6 @@ module.exports = function(app) {
 		res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, access-control-allow-origin, authorization");
 		next();
 	});
-
 
 	/**
 	* creates a database for the user.
@@ -79,7 +79,8 @@ module.exports = function(app) {
 			}
 		}
 		else {
-			logger.info('db user registration: ' + user.username);
+			logger.info('db user registration: ' + user.email);
+			user.username = helpers.convertEmail(user.email);
 			request.put({
 				url: adminUser + '_users/org.couchdb.user:'+ user.username,
 				json: true,

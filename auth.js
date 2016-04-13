@@ -1,6 +1,7 @@
 var request = require('request');
 var crypto = require('crypto');
 var logger = require('./logger.js');
+var helpers = require('./helpers.js');
 var appSecretFB = '82f6c63e28ce9bef1eedf02897b51c5b';
 var adminUser = 'http://admin:devonly@127.0.0.1:5984/';
 var success = 200;
@@ -60,8 +61,11 @@ module.exports = {
 	 * @param {string} token users access token
 	 * @param {function} callback
 	 */
-	dbAuth: function(uname, pwd, callback) {
+	dbAuth: function(email, pwd, callback) {
 		// login request
+		
+		var uname helpers.convertEmail(email);
+		
 		request.post({
 			url: adminUser+ '_session',
 			form: {
@@ -85,4 +89,4 @@ module.exports = {
 			}
 		});
 	}
-}
+};

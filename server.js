@@ -65,7 +65,7 @@ require('socketio-auth')(io, {
 			}
 		}
 		else {
-			auth.dbAuth(data.username, data.password, login);
+			auth.dbAuth(data.email, data.password, login);
 		}
 	},
 	// after login add user to list of users
