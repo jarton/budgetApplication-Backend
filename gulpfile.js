@@ -4,6 +4,7 @@ var mocha = require('gulp-mocha');
 var istanbul = require('gulp-istanbul');
 var spawn = require('child_process').spawn;
 var eslint = require('gulp-eslint');
+var commandExists = require('command-exists');
 
 var pouchserver;
 
@@ -24,8 +25,23 @@ gulp.task('startdb', function(callback) {
 	}, 1000);
 });
 
+gulp.task('startRedis', function(callback) {
+	commandExists('redis-server', function(err, commandExists){
+		if (commandExists) {
+			redis = spawn('redis-server', {stdio: ['ignore', 'ignore', 'ignore']});
+			setTimeout(function () {
+				callback(undefined);
+			}, 1000);
+		}	
+		else {
+			console.log('###########  Please install redis on machine to make tests work. #############')
+			callback(undefined);
+		}
+	})
+});
+
 //runs unit tests for backend
-gulp.task('test', ['pre-test', 'startdb'], function () {
+gulp.task('test', ['pre-test', 'startRedis', 'startdb'], function () {
 	return gulp.src('test/*.js', {read: false})
 	.pipe(mocha({reporter: 'nyan'}))
 	.pipe(istanbul.writeReports())

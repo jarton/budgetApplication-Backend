@@ -6,6 +6,7 @@ var ioStream = require('socket.io-stream');
 var request = require('request');
 var PouchDB = require('pouchdb');
 var replicationStream = require('pouchdb-replication-stream');
+var Redis = require('ioredis')
 
 var logger = require('./logger.js');
 require('./register.js')(app);
@@ -22,9 +23,9 @@ var adminUser = 'http://admin:devonly@127.0.0.1:5984/';
 
 // variables used for server
 var port = 6969;
-var shareReq = {};
-var users = {};
 var googleTokenLength = 1000;
+
+var redis = new Redis();
 
 // socket.io auth module uses above function for login
 require('socketio-auth')(io, {
@@ -71,18 +72,33 @@ require('socketio-auth')(io, {
 	},
 	// after login add user to list of users
 	postAuthenticate: function (socket, data) {
+
+		var userData = {};
 		if (data.email) { //dbauth was used
 			socket.client.username = helpers.convertEmail(data.email);
-			socket.client.email = data.email;
+			socket.client.name = data.email;
+			userData.type = 'db';
+			userData.name = data.email;
+			userData.username = helpers.convertEmail(data.email);
 		}
-		logger.info('user: ' + socket.client.username + ' has logged in');
-		users[socket.client.username] = socket.id;
-		// if user logs in and has a pending share request this will send it
-		for(var name in shareReq){
-			if (name === socket.client.username) {
-				socket.emit('shareReq', shareReq[name]);
-			}
+		else {
+			userData.tpe = 'oatuh';
+			userData.username = socket.client.username;
+			userData.name = socket.client.name;
 		}
+
+		userData.socketid = socket.id;
+		userData.online= true;
+		redis.set(socket.client.name , JSON.stringify(userData));
+
+		logger.info('user: ' + userData.name + ' has logged in');
+
+		redis.get('!req_' + userData.username, function (err, result) {
+			if (result) {
+				result = JSON.parse(result);
+				socket.emit('shareReq', result);
+			};
+		});
 	}
 });
 
@@ -91,72 +107,111 @@ io.on('connection', function(socket) {
 
 	// remove user when socket closes
 	socket.on('disconnect', function () {
-		logger.info('user: ' + socket.client.username+ ' has logged out');
-		delete users[socket.client.username];
+		logger.info('user: ' + socket.client.name + ' has logged out');
+		redis.get(socket.client.name, function(err, res) {
+			if (res) {
+				res = JSON.parse(res);
+				res.online = false;
+				redis.set(res.name, JSON.stringify(res));
+			}
+		});
+	});
+
+	// search for username containing input from client
+	socket.on('search', function(data) {
+		if (!(data.search.startsWith('!'))) {
+
+			var keys = []
+
+			var stream = redis.scanStream({
+				match: data.search + '*',
+				count: 100
+			});
+
+			stream.on('data', function (resKeys) {
+				for (var i = 0; i < resKeys.length; i++){
+					keys.push(resKeys[i]);
+				}
+			});
+
+			stream.on('end', function() {
+				socket.emit('result', keys);
+			});
+		}
+	});
+
+	// get a single users info 
+	socket.on('userInfo', function(data) {
+		redis.get(data.name, function(err, res){
+			if (res){
+				socket.emit('userInfo', JSON.parse(res));
+			}
+		});
 	});
 
 	// load changes from client database
 	ioStream(socket).on('push', function(stream) {
-		logger.info('user: ' + socket.client.username+ ' is pushing db');
+		logger.info('user: ' + socket.client.name + ' is pushing db');
 		var db = new PouchDB(adminUser + socket.client.username);
 		db.load(stream);
 	});
 
 	// send changes on server database to client
 	ioStream(socket).on('pull', function(stream) {
-		logger.info('user: ' + socket.client.username+ ' is pulling db');
+		logger.info('user: ' + socket.client.name + ' is pulling db');
 		var db = new PouchDB(adminUser + socket.client.username);
 		db.dump(stream);
 	});
 
 	// share budget docuemnt request
 	socket.on('shareReq', function(data){
-		logger.info('user: ' + socket.client.username+ ' is sending a share request to: ' + data.username);
+		logger.info('user: ' + socket.client.name + ' is sending a share request to: ' + data.username);
 		var shareObj = {
 			doc: data.docName,
 			sender: socket.client.username 
 		};
-		var found = false;
 
-		//check if user is online and send request if that is the case
-		for(var name in users){
-			if (name === data.username) {
-				socket.broadcast.to(users[name]).emit('shareReq', shareObj);
-				found = true;
+		redis.get(data.username, function(err, result) {
+			if (result) {
+				result = JSON.parse(result);
+				if (result.online === true) {
+					socket.broadcast.to(result.socketid).emit('shareReq', shareObj);
+				}
 			}
-		}
-
-		// else store for later
-		if (!found) {
-			shareReq[data.username] = shareObj;
-		}
+			redis.set('!req_' + data.username, JSON.stringify(shareObj));
+		});
 	});
 
 	// on response to share request
 	socket.on('shareResp', function(data){
 		var username = socket.client.username;
-		logger.info('user: ' + socket.client.username 
-					+ ' has reponded to a share request from: ' + shareReq[username].sender);
-					// if request exists and answer to share is yes
-					if ((data.accept === 'yes') && (shareReq[username] !== undefined)) {
-						// tell database to replicate selected doc between users
-						request.post({
-							url: adminUser+ '_replicate',
-							json: true,
-							body: {
-								source: adminUser+shareReq[username].sender,
-								target: adminUser+username,
-								doc_ids: [shareReq[username].doc],
-								continuous: true
-							},
-							headers: [
-								{
-									name: 'content-type',
-									value: 'application/json'
-								}
-							]
-						}); 
-					}
+		// if request exists and answer to share is yes
+		redis.get('!req_' + username, function(err, result) {
+			if ((data.accept === 'yes') && (result)) {
+
+				result = JSON.parse(result);
+				logger.info('user: ' + socket.client.name + ' has reponded to a share request from: ' + result.sender);
+				redis.del('!req_' + username);
+
+				// tell database to replicate selected doc between users
+				request.post({
+					url: adminUser+ '_replicate',
+					json: true,
+					body: {
+						source: adminUser+result.sender,
+						target: adminUser+username,
+						doc_ids: result.doc,
+						continuous: true
+					},
+					headers: [
+						{
+							name: 'content-type',
+							value: 'application/json'
+						}
+					]
+				}); 
+			}
+		});
 	});
 });
 

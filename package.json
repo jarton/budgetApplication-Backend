@@ -24,6 +24,7 @@
   "devDependencies": {
     "chai": "^3.5.0",
     "chai-http": "^2.0.1",
+    "command-exists": "^0.1.0",
     "eslint": "^2.4.0",
     "facebook-node": "0.0.3",
     "git-guppy": "^1.1.0",
