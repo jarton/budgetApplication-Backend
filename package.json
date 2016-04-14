@@ -13,6 +13,7 @@
     "body-parser": "^1.15.0",
     "express": "^4.13.4",
     "http": "0.0.0",
+    "ioredis": "^1.15.1",
     "pouchdb-replication-stream": "^1.2.6",
     "request": "^2.69.0",
     "socket.io": "^1.4.5",
