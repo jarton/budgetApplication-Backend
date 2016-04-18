@@ -1,5 +1,6 @@
 var bodyParser = require('body-parser');
 var request = require('request');
+var PouchDB = require('pouchdb');
 var logger = require('./logger.js');
 var auth = require('./auth.js');
 var helpers = require('./helpers.js');
@@ -28,12 +29,20 @@ module.exports = function(app) {
 	* @param {function} cb the fucntion to call when db has been created.
 	*/
 	function createUserDb(username, cb) {
-		request.put({
-			url: adminUser + username 
-		}, function done () {
-			logger.info('db created for user: ' + username);
-			cb();
+		var db = new PouchDB(adminUser + username, {
+			skip_setup: true	
 		});
+		db.info(function(err, info) {
+			if (err.message === 'missing') {
+				db = new PouchDB(adminUser + username);
+				logger.info('db created for user: ' + username);
+				cb(undefined);
+			}
+			else if (!err) {
+				cb(username + ' is already registered');
+			}
+		});
+		
 	}
 
 	/**
@@ -53,7 +62,7 @@ module.exports = function(app) {
 		var oauthCallback = function (err, oAuthRes) {
 			if (err) {
 				logger.error('error oatuh call: ' +  err)	
-				res.sendStatus(forbidden);
+				res.status(forbidden).send('OAUTH FAIL');
 			}
 			else { 
 				if (oAuthRes.sub) {
@@ -63,8 +72,14 @@ module.exports = function(app) {
 					user.username = oAuthRes.id;
 				}
 				logger.info('oauth user registration: ' + user.username);
-				createUserDb(user.username, function() {
-					res.sendStatus(success);
+				createUserDb(user.username, function(err) {
+					if (err) {
+						logger.error(err);
+						res.status(forbidden).send('ALREADY REGISTERED')
+					}
+					else {
+						res.status(success).send('OK')
+					}
 				});
 			}
 		};
@@ -81,57 +96,30 @@ module.exports = function(app) {
 		else {
 			logger.info('db user registration: ' + user.email);
 			user.username = helpers.convertEmail(user.email);
-			request.put({
-				url: adminUser + '_users/org.couchdb.user:'+ user.username,
-				json: true,
-				body: {
+
+			var db = new PouchDB(adminUser + '_users');
+			db.put({
+					_id: 'org.couchdb.user:' + user.username,
 					name: user.username,
 					type: "user",
 					roles: [],
 					password: user.password 
-				},
-				headers: [
-					{
-						name: 'accept',
-						value: 'application/json'
-					},
-					{
-						name: 'content-type',
-						value: 'application/json'
-					}
-				]
-			}, function userCreated() {
-				// creates a database with the users name
-				createUserDb(user.username, function databaseCreated() {
-					// restricts access to the new database to only the user
-					request.put({
-						url: adminUser + user.username + '/_security',
-						json: true,
-						body: {
-							name: 'sec',
-							admins: {
-								names: [],
-								roles: []
-							},
-							members: {
-								names: [user.username],
-								roles: []
-							}
-						},
-						headers: [
-							{
-								name: 'accept',
-								value: 'application/json'
-							},
-							{
-								name: 'content-type',
-								value: 'application/json'
-							}
-						]
-					}, function dbAccessCallback() {
-						res.sendStatus(success);
+			}, function(err, response) {
+				if (err) {
+					logger.error(err);
+					res.status(forbidden).send('USER EXISTS');
+				}
+				else {
+					createUserDb(user.username, function databaseCreated(err) {
+						if (err) {
+							logger.error(err);
+							res.status(forbidden).send('USER EXISTS');
+						}
+						else {
+							res.status(success).send('OK')
+						}
 					});
-				});
+				}
 			});
 		};
 	});

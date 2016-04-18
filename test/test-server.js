@@ -151,7 +151,7 @@ describe("server tests", function () {
 		var client= io.connect('http://localhost:6969');
 
 		client.emit('authentication', {
-			email: "test@user2.no", password: "1234"
+			email: "test@user2.no", password: "1234", name: "test2"
 		});
 
 		client.on('authenticated', function() {
@@ -164,7 +164,7 @@ describe("server tests", function () {
 		var client= io.connect('http://localhost:6969');
 
 		client.emit('authentication', {
-			email: "test@user2.no", password: "4"
+			email: "test@user2.no", password: "4", name: "test2"
 		});
 		client.on('unauthorized', function(err){
 			client.disconnect();
@@ -175,13 +175,13 @@ describe("server tests", function () {
 	it("should be able to search for users and get results", function(done) {
 		var client= io.connect('http://localhost:6969');
 		client.emit('authentication', {
-			email: "test@user2.no", password: "1234"
+			email: "test@user1.no", password: "1234", name: "test1"
 		});
 		client.on('authenticated', function(err){
-			client.emit("search", {search: 'test'});
+			client.emit("search", {search: 'test1'});
 
 			client.on('result', function(res){
-				res[1].should.equal('test@user2.no')
+				res[0].should.equal('test1|test$user1+no')
 				done();
 			});
 		});
@@ -190,10 +190,10 @@ describe("server tests", function () {
 	it("should be able to get info of a user", function(done) {
 		var client= io.connect('http://localhost:6969');
 		client.emit('authentication', {
-			email: "test@user2.no", password: "1234"
+			email: "test@user2.no", password: "1234", name: "test2"
 		});
 		client.on('authenticated', function(err){
-			client.emit('userInfo', {name: 'test@user2.no'});
+			client.emit('userInfo', {name: 'test2', username:'test$user2+no', });
 
 			client.on('userInfo', function(res){
 				res.username.should.equal('test$user2+no')
@@ -207,7 +207,7 @@ describe("server tests", function () {
 		var client= io.connect('http://localhost:6969');
 
 		client.emit('authentication', {
-			email: "test@user2.no", password: "1234"
+			email: "test@user2.no", password: "1234", name: "test2"
 		});
 		client.on('authenticated', function(err){
 			var stream = ioStream.createStream();
@@ -241,7 +241,7 @@ describe("server tests", function () {
 			var client= io.connect('http://localhost:6969');
 
 			client.emit('authentication', {
-				email: "test@user2.no", password: "1234"
+				email: "test@user2.no", password: "1234", name: 'test2'
 			});
 			client.on('authenticated', function(err){
 				var stream = ioStream.createStream();
@@ -274,7 +274,7 @@ describe("server tests", function () {
 		var receiver = io.connect('http://localhost:6969');
 
 		receiver.emit('authentication', {
-			email: "test@user2.no", password: "1234"
+			email: "test@user2.no", password: "1234", name: 'test2'
 		});
 
 		receiver.on('authenticated', function() {
@@ -286,10 +286,10 @@ describe("server tests", function () {
 		});
 
 		sender.emit('authentication', {
-			email: "test@user1.no", password: "1234"
+			email: "test@user1.no", password: "1234", name: 'test1'
 		});
 		sender.on('authenticated', function() {
-			sender.emit('shareReq', {username:'test$user2+no', docName:'test-category'});
+			sender.emit('shareReq', {username:'test$user2+no', name: 'test2', docName:'test-category'});
 			sender.disconnect();
 		});
 	});
@@ -298,16 +298,16 @@ describe("server tests", function () {
 		var sender = io.connect('http://localhost:6969');
 
 		sender.emit('authentication', {
-			email: "test@user2.no", password: "1234"
+			email: "test@user2.no", password: "1234", name: 'test2'
 		});
 
 		sender.on('authenticated', function() {
-			sender.emit('shareReq', {username:'test$user1+no', docName:'test-category'});
+			sender.emit('shareReq', {username:'test$user1+no', name: 'test1', docName:'test-category'});
 			sender.disconnect();
 
 			var receiver = io.connect('http://localhost:6969');
 			receiver.emit('authentication', {
-				email: "test@user1.no", password: "1234"
+				email: "test@user1.no", password: "1234", name: 'test1'
 			});
 			receiver.on('authenticated', function() {
 				receiver.on('shareReq', function(shareObj) {
@@ -325,16 +325,16 @@ describe("server tests", function () {
 		var sender = io.connect('http://localhost:6969');
 
 		sender.emit('authentication', {
-			email: "test@user2.no", password: "1234"
+			email: "test@user2.no", password: "1234", name: 'test2'
 		});
 
 		sender.on('authenticated', function() {
-			sender.emit('shareReq', {username:'test$user1+no', docName:'test-category2'});
+			sender.emit('shareReq', {username:'test$user1+no', name: 'test1', docName:'test-category2'});
 			sender.disconnect();
 
 			var receiver = io.connect('http://localhost:6969');
 			receiver.emit('authentication', {
-				email: "test@user1.no", password: "1234"
+				email: "test@user1.no", password: "1234", name: 'test1'
 			});
 			receiver.on('authenticated', function() {
 				receiver.on('shareReq', function(shareObj) {

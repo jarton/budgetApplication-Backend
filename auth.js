@@ -84,12 +84,13 @@ module.exports = {
 			]
 			// callback from login request checks response to see if sucessful
 		}, function (error, response) {
-			logger.info('db auth for user: ' + uname + ' : ' + response.statusCode);
+			logger.info('db auth for user: ' + uname);
 			if (!error && response.statusCode === success) {
 				return callback(undefined);
 			}
 			else {
-				return callback(new Error("User not found"));
+				logger.error(response.body);
+				return callback("User not found");
 			}
 		});
 	}

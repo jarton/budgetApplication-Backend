@@ -3,7 +3,6 @@ var app = require('express')();
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
 var ioStream = require('socket.io-stream');
-var request = require('request');
 var PouchDB = require('pouchdb');
 var replicationStream = require('pouchdb-replication-stream');
 var Redis = require('ioredis')
@@ -42,17 +41,17 @@ require('socketio-auth')(io, {
 
 		function oauthResponse(err, res) {
 			if (err) {
-				logger.warn('oauth failed: ' + err)	
+				logger.error('oauth failed: ' + err)	
 				login(err);
 			}
 			else {
 				if (res.sub) { //google
 					socket.client.username = res.sub;
-					socket.client.name = res.name;
+					socket.client.name = data.name;
 				}
 				else {
 					socket.client.username = res.id;	
-					socket.client.name = res.name;
+					socket.client.name = data.name;
 				}
 				login(undefined);
 			}
@@ -70,30 +69,37 @@ require('socketio-auth')(io, {
 			auth.dbAuth(data.email, data.password, login);
 		}
 	},
-	// after login add user to list of users
+	//stores userinfo in redis, checks for sharerequest for that user
 	postAuthenticate: function (socket, data) {
 
 		var userData = {};
-		if (data.email) { //dbauth was used
+		// database user	
+		if (data.email) { 
 			socket.client.username = helpers.convertEmail(data.email);
-			socket.client.name = data.email;
+			socket.client.name = data.name;
 			userData.type = 'db';
-			userData.name = data.email;
+			userData.name = data.name;
 			userData.username = helpers.convertEmail(data.email);
+			userData.email = helpers.convertEmail(data.email);
 		}
+		// oauth user
 		else {
 			userData.tpe = 'oatuh';
 			userData.username = socket.client.username;
-			userData.name = socket.client.name;
+			userData.name = data.name;
 		}
 
 		userData.socketid = socket.id;
 		userData.online= true;
-		redis.set(socket.client.name , JSON.stringify(userData));
+
+		var keyname = socket.client.name + '|' + socket.client.username;
+
+		redis.set(keyname, JSON.stringify(userData));
 
 		logger.info('user: ' + userData.name + ' has logged in');
 
-		redis.get('!req_' + userData.username, function (err, result) {
+		// check for sharerequests
+		redis.get('!req_' + keyname, function (err, result) {
 			if (result) {
 				result = JSON.parse(result);
 				socket.emit('shareReq', result);
@@ -108,7 +114,7 @@ io.on('connection', function(socket) {
 	// remove user when socket closes
 	socket.on('disconnect', function () {
 		logger.info('user: ' + socket.client.name + ' has logged out');
-		redis.get(socket.client.name, function(err, res) {
+		redis.get(socket.client.name + '|' + socket.client.username, function(err, res) {
 			if (res) {
 				res = JSON.parse(res);
 				res.online = false;
@@ -138,11 +144,14 @@ io.on('connection', function(socket) {
 				socket.emit('result', keys);
 			});
 		}
+		else {
+			socket.emit('result', []);
+		}
 	});
 
 	// get a single users info 
 	socket.on('userInfo', function(data) {
-		redis.get(data.name, function(err, res){
+		redis.get(data.name + '|' + data.username, function(err, res){
 			if (res){
 				socket.emit('userInfo', JSON.parse(res));
 			}
@@ -171,45 +180,41 @@ io.on('connection', function(socket) {
 			sender: socket.client.username 
 		};
 
-		redis.get(data.username, function(err, result) {
+		var keyname = data.name + '|' + data.username;
+
+		redis.get(keyname, function(err, result) {
 			if (result) {
 				result = JSON.parse(result);
 				if (result.online === true) {
 					socket.broadcast.to(result.socketid).emit('shareReq', shareObj);
 				}
 			}
-			redis.set('!req_' + data.username, JSON.stringify(shareObj));
+			redis.set('!req_' + keyname, JSON.stringify(shareObj));
 		});
 	});
 
 	// on response to share request
 	socket.on('shareResp', function(data){
 		var username = socket.client.username;
+		var keyname = socket.client.name + '|' + socket.client.username;
 		// if request exists and answer to share is yes
-		redis.get('!req_' + username, function(err, result) {
+		redis.get('!req_' + keyname, function(err, result) {
 			if ((data.accept === 'yes') && (result)) {
 
 				result = JSON.parse(result);
 				logger.info('user: ' + socket.client.name + ' has reponded to a share request from: ' + result.sender);
-				redis.del('!req_' + username);
+				redis.del('!req_' + keyname);
 
-				// tell database to replicate selected doc between users
-				request.post({
-					url: adminUser+ '_replicate',
-					json: true,
-					body: {
-						source: adminUser+result.sender,
-						target: adminUser+username,
-						doc_ids: result.doc,
-						continuous: true
-					},
-					headers: [
-						{
-							name: 'content-type',
-							value: 'application/json'
-						}
-					]
-				}); 
+				// replicate using pouchdb as adapter
+				var options = {
+					live: true,
+					doc_ids: [result.doc]
+				};
+				var source = new PouchDB(adminUser + result.sender);
+				var target = new PouchDB(adminUser + username);
+
+				source.replicate.to(target, options);
+				source.replicate.from(target, options);
 			}
 		});
 	});
