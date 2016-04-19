@@ -34,12 +34,18 @@ module.exports = function(app) {
 			skip_setup: true	
 		});
 		db.info(function(err, info) {
-			if (err.message === 'missing') {
-				db = new PouchDB(adminUser + dbNamePadding + username);
-				logger.info('db created for user: ' + username);
-				cb(undefined);
+			if (err) {
+				if (err.message === 'missing') {
+					db = new PouchDB(adminUser + dbNamePadding + username);
+					logger.info('db created for user: ' + username);
+					cb(undefined);
+				}
+				else {
+					logger.error('db error: ' + err.message);
+					cb(username + 'error creating db'); 
+				}
 			}
-			else if (!err) {
+			else {
 				cb(username + ' is already registered');
 			}
 		});
