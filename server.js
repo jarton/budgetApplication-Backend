@@ -23,7 +23,7 @@ var dbNamePadding = 'b';
 
 // variables used for server
 var port = 6969;
-var googleTokenLength = 1000;
+var googleTokenLength = 700;
 
 var redis = new Redis();
 
@@ -42,7 +42,7 @@ require('socketio-auth')(io, {
 
 		function oauthResponse(err, res) {
 			if (err) {
-				logger.error('oauth failed: ' + err)	
+				logger.error('oauth failed: ' + JSON.stringify(err));
 				login(err);
 			}
 			else {

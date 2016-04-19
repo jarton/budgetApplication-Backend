@@ -37,12 +37,12 @@ module.exports = function(app) {
 			if (err) {
 				if (err.message === 'missing') {
 					db = new PouchDB(adminUser + dbNamePadding + username);
+					db.info();
 					logger.info('db created for user: ' + username);
 					cb(undefined);
 				}
 				else {
-					logger.error('db error: ' + err.message);
-					cb(username + 'error creating db'); 
+					cb(username + 'db error ' + err.message); 
 				}
 			}
 			else {
@@ -82,10 +82,10 @@ module.exports = function(app) {
 				createUserDb(user.username, function(err) {
 					if (err) {
 						logger.error(err);
-						res.status(forbidden).send('ALREADY REGISTERED')
+						res.status(202).send('ALREADY REGISTERED');
 					}
 					else {
-						res.status(success).send('OK')
+						res.status(success).send('OK');
 					}
 				});
 			}
