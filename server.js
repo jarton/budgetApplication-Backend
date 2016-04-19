@@ -19,6 +19,7 @@ PouchDB.adapter('writableStream', replicationStream.adapters.writableStream);
 
 // login and url for backend server with admin credentials
 var adminUser = 'http://admin:devonly@127.0.0.1:5984/';
+var dbNamePadding = 'b';
 
 // variables used for server
 var port = 6969;
@@ -161,14 +162,14 @@ io.on('connection', function(socket) {
 	// load changes from client database
 	ioStream(socket).on('push', function(stream) {
 		logger.info('user: ' + socket.client.name + ' is pushing db');
-		var db = new PouchDB(adminUser + socket.client.username);
+		var db = new PouchDB(adminUser + dbNamePadding + socket.client.username);
 		db.load(stream);
 	});
 
 	// send changes on server database to client
 	ioStream(socket).on('pull', function(stream) {
 		logger.info('user: ' + socket.client.name + ' is pulling db');
-		var db = new PouchDB(adminUser + socket.client.username);
+		var db = new PouchDB(adminUser + dbNamePadding + socket.client.username);
 		db.dump(stream);
 	});
 
@@ -210,8 +211,8 @@ io.on('connection', function(socket) {
 					live: true,
 					doc_ids: [result.doc]
 				};
-				var source = new PouchDB(adminUser + result.sender);
-				var target = new PouchDB(adminUser + username);
+				var source = new PouchDB(adminUser + dbNamePadding + result.sender);
+				var target = new PouchDB(adminUser + dbNamePadding + username);
 
 				source.replicate.to(target, options);
 				source.replicate.from(target, options);

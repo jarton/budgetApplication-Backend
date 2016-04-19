@@ -14,6 +14,7 @@ module.exports = function(app) {
 	const success = 200;
 	const forbidden = 403;
 	const adminUser = 'http://admin:devonly@127.0.0.1:5984/';
+	const dbNamePadding = 'b';
 
 	app.use(bodyParser.json()); // for parsing application/json
 
@@ -29,12 +30,12 @@ module.exports = function(app) {
 	* @param {function} cb the fucntion to call when db has been created.
 	*/
 	function createUserDb(username, cb) {
-		var db = new PouchDB(adminUser + username, {
+		var db = new PouchDB(adminUser + dbNamePadding + username, {
 			skip_setup: true	
 		});
 		db.info(function(err, info) {
 			if (err.message === 'missing') {
-				db = new PouchDB(adminUser + username);
+				db = new PouchDB(adminUser + dbNamePadding + username);
 				logger.info('db created for user: ' + username);
 				cb(undefined);
 			}
