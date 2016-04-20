@@ -49,7 +49,6 @@ module.exports = function(app) {
 				cb(username + ' is already registered');
 			}
 		});
-		
 	}
 
 	/**
@@ -129,5 +128,19 @@ module.exports = function(app) {
 				}
 			});
 		};
+	});
+
+	app.post('/fbtoken', function (req, res) {
+		var user = req.body;
+		logge.warn(user);
+		auth.getLongToken(user.token, function(err, res) {
+			if(err)	{
+				logger.error(JSON.stringify(res));
+				res.status(202).send("error getting token");
+			}
+			else {
+				res.status(200).send(res);
+			}
+		});
 	});
 }
