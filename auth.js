@@ -21,6 +21,7 @@ module.exports = {
 		var hash = crypto.createHmac('sha256', appSecretFB)
 		.update(token)
 		.digest('hex');
+		logger.warn(token);
 		request.get({
 			url: 'https://graph.facebook.com/v2.5/me?fields=id,name&access_token=' + token + '&appsecret_proof='+ hash.toString('hex')
 		}, function (error, response) {
@@ -96,15 +97,10 @@ module.exports = {
 		});
 	},
 	getLongToken: function(token, callback) {
-		//var hash = crypto.createHmac('sha256', appSecretFB)
-		//.update(token)
-		//.digest('hex');
 		request.get({
-			//url: 'https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&amp;client_id='+app+'&amp;client_secret='+ hash.toString('hex')+ '&amp;fb_exchange_token='+token
-			url: 'https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&amp;client_id='+ appIdFB +'&amp;client_secret='+ appSecretFB + '&amp;fb_exchange_token='+token
+			url: 'https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id='+ appIdFB +'&client_secret='+ appSecretFB + '&fb_exchange_token='+token
 		}, function (error, response) {
-			var res = JSON.parse(response.body);
-			logger.info('exhange token for : ' + JSON.stringify(res));
+			res = response.body;
 			if (!error && response.statusCode === success) {
 				return callback(undefined, res)
 			}

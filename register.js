@@ -67,7 +67,7 @@ module.exports = function(app) {
 
 		var oauthCallback = function (err, oAuthRes) {
 			if (err) {
-				logger.error('error oatuh call: ' +  err)	
+				logger.error('error oatuh call: ' +  JSON.stringify(err));
 				res.status(forbidden).send('OAUTH FAIL');
 			}
 			else { 
@@ -132,14 +132,13 @@ module.exports = function(app) {
 
 	app.post('/fbtoken', function (req, res) {
 		var user = req.body;
-		logge.warn(user);
-		auth.getLongToken(user.token, function(err, res) {
+		auth.getLongToken(user.token, function(err, result) {
 			if(err)	{
-				logger.error(JSON.stringify(res));
+				logger.error(JSON.stringify(result));
 				res.status(202).send("error getting token");
 			}
 			else {
-				res.status(200).send(res);
+				res.status(200).send(result);
 			}
 		});
 	});
