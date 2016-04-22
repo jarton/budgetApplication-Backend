@@ -6,9 +6,10 @@ var ioStream = require('socket.io-stream');
 var PouchDB = require('pouchdb');
 var replicationStream = require('pouchdb-replication-stream');
 var Redis = require('ioredis')
+var jwt = require('jsonwebtoken')
 
 var logger = require('./logger.js');
-require('./register.js')(app);
+require('./httpApi.js')(app);
 var auth = require('./auth.js');
 var helpers = require('./helpers.js');
 
@@ -20,6 +21,7 @@ PouchDB.adapter('writableStream', replicationStream.adapters.writableStream);
 // login and url for backend server with admin credentials
 var adminUser = 'http://admin:devonly@127.0.0.1:5984/';
 var dbNamePadding = 'b';
+var jwtSecret = 'testsecret';
 
 // variables used for server
 var port = 6969;
@@ -59,15 +61,21 @@ require('socketio-auth')(io, {
 		}
 
 		if (data.token) {
-			if (data.token.length > googleTokenLength) {
+			if (data.type === 'google') {
 				auth.googleAuth(data.token, oauthResponse);
 			}
-			else {
+			else if (data.type === 'facebook'){
 				auth.facebookAuth(data.token, oauthResponse);
+			}
+			else {
+				jwt.verify(token, jwtSecret, function(err, decoded){
+					socket.client.username = headers.convertEmail(decoded.email);
+					socket.client.name = data.name;
+				});
 			}
 		}
 		else {
-			auth.dbAuth(data.email, data.password, login);
+			login('error');
 		}
 	},
 	//stores userinfo in redis, checks for sharerequest for that user
@@ -75,13 +83,10 @@ require('socketio-auth')(io, {
 
 		var userData = {};
 		// database user	
-		if (data.email) { 
-			socket.client.username = helpers.convertEmail(data.email);
-			socket.client.name = data.name;
+		if (data.type === 'jwt') { 
 			userData.type = 'db';
 			userData.name = data.name;
-			userData.username = helpers.convertEmail(data.email);
-			userData.email = helpers.convertEmail(data.email);
+			userData.username = socket.client.username;
 		}
 		// oauth user
 		else {

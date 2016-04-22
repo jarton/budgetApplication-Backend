@@ -4,6 +4,7 @@ var PouchDB = require('pouchdb');
 var logger = require('./logger.js');
 var auth = require('./auth.js');
 var helpers = require('./helpers.js');
+var jwt = require('jsonwebtoken');
 
 /**
  * Sets up express app, and routing.
@@ -12,6 +13,7 @@ var helpers = require('./helpers.js');
 module.exports = function(app) {
 
 	const success = 200;
+	const jwtSecret = 'testsecret';
 	const forbidden = 403;
 	const adminUser = 'http://admin:devonly@127.0.0.1:5984/';
 	const dbNamePadding = 'b';
@@ -128,6 +130,20 @@ module.exports = function(app) {
 				}
 			});
 		};
+	});
+
+	app.post('/login', function (req, res) {
+		var user = req.body;
+		auth.dbAuth(user.email, user.password, function(err) {
+			if (err) {
+				res.status(202).send('Wrong username / password');
+			}
+			else {
+				jwt.sign({email: user.email}, jwtSecret, { algorithm: 'HS256'}, function(token) {
+					res.status(200).send(token);
+				});
+			}
+		});
 	});
 
 	app.post('/fbtoken', function (req, res) {
