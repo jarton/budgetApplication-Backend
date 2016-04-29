@@ -5,6 +5,7 @@ var logger = require('./logger.js');
 var auth = require('./auth.js');
 var helpers = require('./helpers.js');
 var jwt = require('jsonwebtoken');
+var Redis = require('ioredis')
 
 /**
  * Sets up express app, and routing.
@@ -17,6 +18,8 @@ module.exports = function(app) {
 	const forbidden = 403;
 	const adminUser = 'http://admin:devonly@127.0.0.1:5984/';
 	const dbNamePadding = 'b';
+
+	var redis = new Redis();
 
 	app.use(bodyParser.json()); // for parsing application/json
 
@@ -44,6 +47,7 @@ module.exports = function(app) {
 					cb(undefined);
 				}
 				else {
+					logger.error(err);
 					cb(username + 'db error ' + err.message); 
 				}
 			}
@@ -66,11 +70,11 @@ module.exports = function(app) {
 	*/
 	app.post('/register', function (req, res) {
 		var user = req.body;
-
+		user.email = user.email.toLowerCase();
 		var oauthCallback = function (err, oAuthRes) {
 			if (err) {
 				logger.error('error oatuh call: ' +  JSON.stringify(err));
-				res.status(forbidden).send('OAUTH FAIL');
+				res.status(202).send('OAUTH FAIL');
 			}
 			else { 
 				if (oAuthRes.sub) {
@@ -115,13 +119,13 @@ module.exports = function(app) {
 			}, function(err, response) {
 				if (err) {
 					logger.error(err);
-					res.status(forbidden).send('USER EXISTS');
+					res.status(202).send('USER EXISTS');
 				}
 				else {
 					createUserDb(user.username, function databaseCreated(err) {
 						if (err) {
 							logger.error(err);
-							res.status(forbidden).send('USER EXISTS');
+							res.status(202).send('USER EXISTS');
 						}
 						else {
 							res.status(success).send('OK')
@@ -134,13 +138,36 @@ module.exports = function(app) {
 
 	app.post('/login', function (req, res) {
 		var user = req.body;
+		user.email = user.email.toLowerCase();
 		auth.dbAuth(user.email, user.password, function(err) {
 			if (err) {
 				res.status(202).send('Wrong username / password');
 			}
 			else {
-				jwt.sign({email: user.email}, jwtSecret, { algorithm: 'HS256'}, function(token) {
-					res.status(200).send(token);
+				jwt.sign({email: user.email}, jwtSecret, { algorithm: 'HS256', expiresIn: "60 days"}, function(token) {
+				
+				if (user.name === "") {
+					var key = "";
+	
+					var username = helpers.convertEmail(user.email);
+
+
+					var stream = redis.scanStream({
+						match: '*' + username,
+						count: 100
+					});
+	
+					stream.on('data', function (resKey) {
+						key = resKey[0];
+					});
+	
+					stream.on('end', function() {
+						res.status(200).send({token: token, name: key.split('|')[0]});
+					});
+				}
+				else {
+					res.status(200).send({token: token});
+				}
 				});
 			}
 		});

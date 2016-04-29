@@ -59,6 +59,8 @@ require('socketio-auth')(io, {
 				login(undefined);
 			}
 		}
+	
+		logger.warn(JSON.stringify(data));
 
 		if (data.token) {
 			if (data.type === 'google') {
@@ -68,9 +70,16 @@ require('socketio-auth')(io, {
 				auth.facebookAuth(data.token, oauthResponse);
 			}
 			else {
-				jwt.verify(token, jwtSecret, function(err, decoded){
-					socket.client.username = headers.convertEmail(decoded.email);
-					socket.client.name = data.name;
+				jwt.verify(String(data.token), jwtSecret, function(err, decoded){
+					if (err) {
+						login('err');
+					}
+					else {
+						socket.client.username = helpers.convertEmail(decoded.email);
+						socket.client.name = data.name;
+						login(undefined);
+					}
+					
 				});
 			}
 		}
