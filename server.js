@@ -5,8 +5,8 @@ var io = require('socket.io')(server);
 var ioStream = require('socket.io-stream');
 var PouchDB = require('pouchdb');
 var replicationStream = require('pouchdb-replication-stream');
-var Redis = require('ioredis')
-var jwt = require('jsonwebtoken')
+var Redis = require('ioredis');
+var jwt = require('jsonwebtoken');
 
 var logger = require('./logger.js');
 require('./httpApi.js')(app);

@@ -9,6 +9,8 @@ describe("server tests", function () {
 
 	var server;
 	var helpers;
+	var jwt1;
+	var jwt2;
 	var testUser1db = new PouchDB('user1', {db: require('memdown')});
 	var testUser2db = new PouchDB('user2', {db: require('memdown')});
 
@@ -31,7 +33,7 @@ describe("server tests", function () {
 
 	it("convert email works", function() {
 		var email = "test_me@internet.com";
-		var res = "test_me$internet+com";
+		var res = "test_me$internet-com";
 		email = helpers.convertEmail(email);
 		email.should.equal(res);
 	});
@@ -64,7 +66,7 @@ describe("server tests", function () {
 		},
 		function(err, res, body){
 			request.get({
-				url: 'http://admin:devonly@localhost:5984/_users/org.couchdb.user:test$user2+no'
+				url: 'http://admin:devonly@localhost:5984/_users/org.couchdb.user:test$user2-no'
 			},
 			function(err, res, body){
 				var parsed = JSON.parse(body);
@@ -73,7 +75,7 @@ describe("server tests", function () {
 					done();
 				}
 				else {
-					parsed.name.should.equal('test$user2+no');
+					parsed.name.should.equal('test$user2-no');
 					done();
 				}
 			}
@@ -148,24 +150,72 @@ describe("server tests", function () {
 	});
 
 	it("should accept correct login information", function (done) {
-		var client= io.connect('http://localhost:6969');
-
-		client.emit('authentication', {
-			email: "test@user2.no", password: "1234", name: "test2"
-		});
-
-		client.on('authenticated', function() {
-			client.disconnect();
+		request.post({
+			url: 'http://localhost:6969/login',
+			json: true,
+			body: {
+				name: 'test1',
+				email: 'test@user1.no',
+				password: '1234'
+			}
+		},
+		function(err, res, body){
+			body.token.should.exist;
+			res.statusCode.should.equal(200);
 			done();
 		});
 	});
 
 	it("should not accecpt incorrect login information", function (done) {
+		request.post({
+			url: 'http://localhost:6969/login',
+			json: true,
+			body: {
+				name: 'test1',
+				email: 'test@user1.no',
+				password: '34'
+			}
+		},
+		function(err, res, body){
+			body.should.not.have.property('token');
+			res.statusCode.should.equal(202);
+			done();
+		});
+	});
+
+	it("should be able to connect with token", function (done) {
+		request.post({
+			url: 'http://localhost:6969/login',
+			json: true,
+			body: {
+				name: 'test1',
+				email: 'test@user1.no',
+				password: '1234'
+			}
+		},
+		function(err, res, body){
+			jwt1 = body.token;	
+			var client= io.connect('http://localhost:6969');
+
+			client.emit('authentication', {
+				token: jwt1, name: "test1", type: 'jwt'
+			});
+
+			client.on('authenticated', function() {
+				client.disconnect();
+				done();
+			});
+		});
+
+	});
+
+	it("should not accecpt incorrect connect information", function (done) {
 		var client= io.connect('http://localhost:6969');
 
 		client.emit('authentication', {
-			email: "test@user2.no", password: "4", name: "test2"
+			token: 'invalidToken', name: "test1", type: 'jwt'
 		});
+
 		client.on('unauthorized', function(err){
 			client.disconnect();
 			done();
@@ -175,29 +225,41 @@ describe("server tests", function () {
 	it("should be able to search for users and get results", function(done) {
 		var client= io.connect('http://localhost:6969');
 		client.emit('authentication', {
-			email: "test@user1.no", password: "1234", name: "test1"
+			token: jwt1, name: "test1", type: 'jwt'
 		});
 		client.on('authenticated', function(err){
 			client.emit("search", {search: 'test1'});
 
 			client.on('result', function(res){
-				res[0].should.equal('test1|test$user1+no')
+				res[0].should.equal('test1')
 				done();
 			});
 		});
 	});
 
 	it("should be able to get info of a user", function(done) {
-		var client= io.connect('http://localhost:6969');
-		client.emit('authentication', {
-			email: "test@user2.no", password: "1234", name: "test2"
-		});
-		client.on('authenticated', function(err){
-			client.emit('userInfo', {name: 'test2', username:'test$user2+no', });
+		request.post({
+			url: 'http://localhost:6969/login',
+			json: true,
+			body: {
+				name: 'test2',
+				email: 'test@user2.no',
+				password: '1234'
+			}
+		},
+		function(err, res, body){
+			jwt2 = body.token;
+			var client= io.connect('http://localhost:6969');
+			client.emit('authentication', {
+				token: jwt2, name: "test2", type: 'jwt'
+			});
+			client.on('authenticated', function(err){
+				client.emit('userInfo', {name: 'test2', username:'test$user2-no', });
 
-			client.on('userInfo', function(res){
-				res.username.should.equal('test$user2+no')
-				done();
+				client.on('userInfo', function(res){
+					res.username.should.equal('test$user2-no')
+					done();
+				});
 			});
 		});
 	});
@@ -207,58 +269,24 @@ describe("server tests", function () {
 		var client= io.connect('http://localhost:6969');
 
 		client.emit('authentication', {
-			email: "test@user2.no", password: "1234", name: "test2"
+			token: jwt2, name: "test2", type: 'jwt'
 		});
 		client.on('authenticated', function(err){
 			var stream = ioStream.createStream();
 			ioStream(client).emit('push', stream);
-			testUser2db.dump(stream);
-
-			setTimeout(function() {
-				request.get({
-					url: 'http://test$user2+no:1234@localhost:5984/test$user2+no/test-category2'
-				},
-				function(err, res, body){
-					if (err) {
-						should.fail();
-						done();	
-					}
-					else {
-						var parsed = JSON.parse(body);
-						parsed.title.should.equal('user2');
-						client.disconnect();
-						done();
-					}
-				});	
-			}, 1500);
-		});
-	});
-
-	it("should pull central changes to local database", function (done) {
-		this.timeout(3000);
-
-		request.put('http://test$user2+no:1234@localhost:5984/test$user2+no/testpull', function(err, res, body){
-			var client= io.connect('http://localhost:6969');
-
-			client.emit('authentication', {
-				email: "test@user2.no", password: "1234", name: 'test2'
-			});
-			client.on('authenticated', function(err){
-				var stream = ioStream.createStream();
-				ioStream(client).emit('pull', stream);
-				testUser2db.load(stream);
-
+			testUser2db.dump(stream).then(function(res) {
 				setTimeout(function() {
 					request.get({
-						url: 'http://test$user2+no:1234@localhost:5984/test$user2+no/testpull'
+						url: 'http://admin:devonly@localhost:5984/btest\$user2-no/test-category2'
 					},
 					function(err, res, body){
-						if (err) {
+						var parsed = JSON.parse(body);
+						if (parsed.error) {
 							should.fail();
 							done();	
 						}
 						else {
-							res.statusCode.should.equal(200);
+							parsed.title.should.equal('user2');
 							client.disconnect();
 							done();
 						}
@@ -266,6 +294,29 @@ describe("server tests", function () {
 				}, 1500);
 			});
 		});
+	});
+
+	it("should pull central changes to local database", function (done) {
+		this.timeout(3000);
+
+		request.put('http://admin:devonly@localhost:5984/btest\$user2-no/testpull', 
+					function(err, res, body){
+						var client= io.connect('http://localhost:6969');
+
+						client.emit('authentication', {
+							token: jwt2, name: "test2", type: 'jwt'
+						});
+						client.on('authenticated', function(err){
+							var stream = ioStream.createStream();
+							ioStream(client).emit('pull', stream);
+							testUser2db.load(stream).then(function() {
+								testUser2db.get('testpull', function(err, doc) {
+									doc.should.exist;
+									done();
+								});
+							});
+						});
+					});
 
 	});
 
@@ -274,7 +325,7 @@ describe("server tests", function () {
 		var receiver = io.connect('http://localhost:6969');
 
 		receiver.emit('authentication', {
-			email: "test@user2.no", password: "1234", name: 'test2'
+			token: jwt2, name: "test2", type: 'jwt'
 		});
 
 		receiver.on('authenticated', function() {
@@ -286,10 +337,10 @@ describe("server tests", function () {
 		});
 
 		sender.emit('authentication', {
-			email: "test@user1.no", password: "1234", name: 'test1'
+			token: jwt1, name: "test1", type: 'jwt'
 		});
 		sender.on('authenticated', function() {
-			sender.emit('shareReq', {username:'test$user2+no', name: 'test2', docName:'test-category'});
+			sender.emit('shareReq', {username:'test$user2-no', name: 'test2', docName:'test-category'});
 			sender.disconnect();
 		});
 	});
@@ -298,16 +349,16 @@ describe("server tests", function () {
 		var sender = io.connect('http://localhost:6969');
 
 		sender.emit('authentication', {
-			email: "test@user2.no", password: "1234", name: 'test2'
+			token: jwt2, name: "test2", type: 'jwt'
 		});
 
 		sender.on('authenticated', function() {
-			sender.emit('shareReq', {username:'test$user1+no', name: 'test1', docName:'test-category'});
+			sender.emit('shareReq', {username:'test$user1-no', name: 'test1', docName:'test-category'});
 			sender.disconnect();
 
 			var receiver = io.connect('http://localhost:6969');
 			receiver.emit('authentication', {
-				email: "test@user1.no", password: "1234", name: 'test1'
+				token: jwt1, name: "test1", type: 'jwt'
 			});
 			receiver.on('authenticated', function() {
 				receiver.on('shareReq', function(shareObj) {
@@ -325,23 +376,24 @@ describe("server tests", function () {
 		var sender = io.connect('http://localhost:6969');
 
 		sender.emit('authentication', {
-			email: "test@user2.no", password: "1234", name: 'test2'
+			token: jwt2, name: "test2", type: 'jwt'
 		});
 
 		sender.on('authenticated', function() {
-			sender.emit('shareReq', {username:'test$user1+no', name: 'test1', docName:'test-category2'});
+			sender.emit('shareReq', {username:'test$user1-no', name: 'test1', docName:'test-category2'});
 			sender.disconnect();
 
 			var receiver = io.connect('http://localhost:6969');
+
 			receiver.emit('authentication', {
-				email: "test@user1.no", password: "1234", name: 'test1'
+				token: jwt1, name: "test1", type: 'jwt'
 			});
 			receiver.on('authenticated', function() {
 				receiver.on('shareReq', function(shareObj) {
 					receiver.emit('shareResp', {accept: 'yes'});
 					setTimeout(function(){
 						request.get({
-							url: 'http://test$user1+no:1234@localhost:5984/test$user1+no/test-category2'
+							url: 'http://admin:devonly@localhost:5984/btest\$user1-no/test-category2'
 						},
 						function(err, res, body){
 							if (err) {
