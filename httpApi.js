@@ -70,7 +70,6 @@ module.exports = function(app) {
 	*/
 	app.post('/register', function (req, res) {
 		var user = req.body;
-		user.email = user.email.toLowerCase();
 		var oauthCallback = function (err, oAuthRes) {
 			if (err) {
 				logger.error('error oatuh call: ' +  JSON.stringify(err));
@@ -106,6 +105,7 @@ module.exports = function(app) {
 			}
 		}
 		else {
+			user.email = user.email.toLowerCase();
 			logger.info('db user registration: ' + user.email);
 			user.username = helpers.convertEmail(user.email);
 

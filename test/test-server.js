@@ -78,13 +78,12 @@ describe("server tests", function () {
 					parsed.name.should.equal('test$user2-no');
 					done();
 				}
-			}
-			);
-		}
-		);
+			});
+		});
 	});
 
 	it("one should be able to register with facebook token", function (done) {
+		this.timeout(3000);
 		var testUser;
 		request.get({
 			url: 'https://graph.facebook.com/oauth/access_token?client_id=187079694982178&client_secret=82f6c63e28ce9bef1eedf02897b51c5b&grant_type=client_credentials'
@@ -105,26 +104,56 @@ describe("server tests", function () {
 					}
 				}, 
 				function (err, res, body) {
-					request.get({
-						url: 'http://admin:devonly@localhost:5984/' + testUser.id
-					},
-					function(err, res, body){
-						var parsed = JSON.parse(body);
-						if (parsed.error) {
-							should.fail();
-							done();
-						}
-						else {
-							parsed.db_name.should.equal(testUser.id);
-							done();
-						}
-					});
+					setTimeout(function() {
+						request.get({
+							url: 'http://admin:devonly@localhost:5984/b' + testUser.id
+						},
+						function(err, res, body){
+							var parsed = JSON.parse(body);
+							if (parsed.error) {
+								should.fail();
+								done();
+							}
+							else {
+								parsed.db_name.should.equal('b' + testUser.id);
+								done();
+							}
+						});
+					}, 1000);
+				});
+			});
+		});
+	});
+
+	it("one should be able to get a long lasting facebook token", function (done) {
+		this.timeout(3000);
+		var testUser;
+		request.get({
+			url: 'https://graph.facebook.com/oauth/access_token?client_id=187079694982178&client_secret=82f6c63e28ce9bef1eedf02897b51c5b&grant_type=client_credentials'
+		},
+		function(err, res, body){
+			request.get({
+				url: 'https://graph.facebook.com/187079694982178/accounts/test-users?'+body
+			},
+			function(err, res, body){
+				testUser = JSON.parse(body).data[1];
+				request.post({
+					url: 'http://localhost:6969/fbtoken',
+					json: true,
+					body: {
+						token: testUser.access_token
+					}
+				}, 
+				function (err, res, body) {
+					res.statusCode.should.equal(200);
+					done();
 				});
 			});
 		});
 	});
 
 	it("one should be able to login with facebook token", function (done) {
+		this.timeout(3000);
 		var testUser;
 		request.get({
 			url: 'https://graph.facebook.com/oauth/access_token?client_id=187079694982178&client_secret=82f6c63e28ce9bef1eedf02897b51c5b&grant_type=client_credentials'
@@ -138,7 +167,7 @@ describe("server tests", function () {
 				var client= io.connect('http://localhost:6969');
 
 				client.emit('authentication', {
-					token: testUser.access_token
+					token: testUser.access_token, name: 'testUser', type: 'facebook'
 				});
 
 				client.on('authenticated', function() {
@@ -231,7 +260,7 @@ describe("server tests", function () {
 			client.emit("search", {search: 'test1'});
 
 			client.on('result', function(res){
-				res[0].should.equal('test1')
+				res[0].should.equal('test1|test$user1-no');
 				done();
 			});
 		});
@@ -300,23 +329,23 @@ describe("server tests", function () {
 		this.timeout(3000);
 
 		request.put('http://admin:devonly@localhost:5984/btest\$user2-no/testpull', 
-					function(err, res, body){
-						var client= io.connect('http://localhost:6969');
+								function(err, res, body){
+									var client= io.connect('http://localhost:6969');
 
-						client.emit('authentication', {
-							token: jwt2, name: "test2", type: 'jwt'
-						});
-						client.on('authenticated', function(err){
-							var stream = ioStream.createStream();
-							ioStream(client).emit('pull', stream);
-							testUser2db.load(stream).then(function() {
-								testUser2db.get('testpull', function(err, doc) {
-									doc.should.exist;
-									done();
+									client.emit('authentication', {
+										token: jwt2, name: "test2", type: 'jwt'
+									});
+									client.on('authenticated', function(err){
+										var stream = ioStream.createStream();
+										ioStream(client).emit('pull', stream);
+										testUser2db.load(stream).then(function() {
+											testUser2db.get('testpull', function(err, doc) {
+												doc.should.exist;
+												done();
+											});
+										});
+									});
 								});
-							});
-						});
-					});
 
 	});
 

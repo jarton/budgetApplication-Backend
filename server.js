@@ -59,7 +59,7 @@ require('socketio-auth')(io, {
 				login(undefined);
 			}
 		}
-	
+
 		logger.warn(JSON.stringify(data));
 
 		if (data.token) {
@@ -79,7 +79,7 @@ require('socketio-auth')(io, {
 						socket.client.name = data.name;
 						login(undefined);
 					}
-					
+
 				});
 			}
 		}
