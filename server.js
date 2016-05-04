@@ -25,7 +25,6 @@ var jwtSecret = 'testsecret';
 
 // variables used for server
 var port = 6969;
-var googleTokenLength = 700;
 
 var redis = new Redis();
 
