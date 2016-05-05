@@ -59,8 +59,6 @@ require('socketio-auth')(io, {
 			}
 		}
 
-		logger.warn(JSON.stringify(data));
-
 		if (data.token) {
 			if (data.type === 'google') {
 				auth.googleAuth(data.token, oauthResponse);
@@ -106,18 +104,39 @@ require('socketio-auth')(io, {
 		userData.socketid = socket.id;
 		userData.online= true;
 
-		var keyname = socket.client.name + '|' + socket.client.username;
+		var keyname = socket.client.name + ':' + socket.client.username;
 
 		redis.set(keyname, JSON.stringify(userData));
 
 		logger.info('user: ' + userData.name + ' has logged in');
 
 		// check for sharerequests
-		redis.get('!req_' + keyname, function (err, result) {
-			if (result) {
-				result = JSON.parse(result);
-				socket.emit('shareReq', result);
-			};
+		var keys = []
+
+		// scan for sharerequest for that user
+		var stream = redis.scanStream({
+			//serch format !req: docname : share reqiver : share sender
+			match: '!req:*:'+ socket.client.username + ':*',
+			count: 100
+		});
+
+		// put redis keys for reqests in array
+		stream.on('data', function (resKeys) {
+			for (var i = 0; i < resKeys.length; i++){
+				keys.push(resKeys[i]);
+			}
+		});
+
+		// emit share request for each in key array
+		stream.on('end', function() {
+			keys.forEach(function(key) {
+				redis.get(key, function (err, result) {
+					if (result) {
+						result = JSON.parse(result);
+						socket.emit('shareReq', result);
+					};
+				});
+			});
 		});
 	}
 });
@@ -128,11 +147,11 @@ io.on('connection', function(socket) {
 	// remove user when socket closes
 	socket.on('disconnect', function () {
 		logger.info('user: ' + socket.client.name + ' has logged out');
-		redis.get(socket.client.name + '|' + socket.client.username, function(err, res) {
+		redis.get(socket.client.name + ':' + socket.client.username, function(err, res) {
 			if (res) {
 				res = JSON.parse(res);
 				res.online = false;
-				redis.set(res.name, JSON.stringify(res));
+				redis.set(socket.client.name+':'+socket.client.username, JSON.stringify(res));
 			}
 		});
 	});
@@ -165,7 +184,7 @@ io.on('connection', function(socket) {
 
 	// get a single users info 
 	socket.on('userInfo', function(data) {
-		redis.get(data.name + '|' + data.username, function(err, res){
+		redis.get(data.name + ':' + data.username, function(err, res){
 			if (res){
 				socket.emit('userInfo', JSON.parse(res));
 			}
@@ -188,41 +207,46 @@ io.on('connection', function(socket) {
 
 	// share budget docuemnt request
 	socket.on('shareReq', function(data){
-		logger.info('user: ' + socket.client.name + ' is sending a share request to: ' + data.username);
+		logger.info('user: ' + socket.client.name + ' is sending a share request to: ' + data.name);
 		var shareObj = {
-			doc: data.docName,
-			sender: socket.client.username 
+			docname: data.docname,
+			sender: socket.client.username,
+			id: Date.now() + socket.client.name
 		};
 
-		var keyname = data.name + '|' + data.username;
+		var keyname = ':' + data.docname + ':' + data.username + ':' + socket.client.username;
 
-		redis.get(keyname, function(err, result) {
+		var keys = []
+
+		redis.get(data.name + ':' + data.username, function(err, result) {
 			if (result) {
 				result = JSON.parse(result);
 				if (result.online === true) {
 					socket.broadcast.to(result.socketid).emit('shareReq', shareObj);
 				}
 			}
-			redis.set('!req_' + keyname, JSON.stringify(shareObj));
+			redis.set('!req' + keyname, JSON.stringify(shareObj));
 		});
 	});
 
 	// on response to share request
 	socket.on('shareResp', function(data){
 		var username = socket.client.username;
-		var keyname = socket.client.name + '|' + socket.client.username;
+
+		var keyname = ':' + data.request.docname + ':' + username + ':' + data.request.sender;
+
 		// if request exists and answer to share is yes
-		redis.get('!req_' + keyname, function(err, result) {
-			if ((data.accept === 'yes') && (result)) {
+		redis.get('!req' + keyname, function(err, result) {
+			if ((data.accept === true) && (result)) {
 
 				result = JSON.parse(result);
 				logger.info('user: ' + socket.client.name + ' has reponded to a share request from: ' + result.sender);
-				redis.del('!req_' + keyname);
+				redis.del('!req' + keyname);
 
 				// replicate using pouchdb as adapter
 				var options = {
 					live: true,
-					doc_ids: [result.doc]
+					doc_ids: [result.docname]
 				};
 				var source = new PouchDB(adminUser + dbNamePadding + result.sender);
 				var target = new PouchDB(adminUser + dbNamePadding + username);

@@ -257,10 +257,10 @@ describe("server tests", function () {
 			token: jwt1, name: "test1", type: 'jwt'
 		});
 		client.on('authenticated', function(err){
-			client.emit("search", {search: 'test1'});
+			client.emit("search", {search: 'test'});
 
 			client.on('result', function(res){
-				res[0].should.equal('test1|test$user1-no');
+				res[0].should.equal('test1:test$user1-no');
 				done();
 			});
 		});
@@ -328,24 +328,23 @@ describe("server tests", function () {
 	it("should pull central changes to local database", function (done) {
 		this.timeout(3000);
 
-		request.put('http://admin:devonly@localhost:5984/btest\$user2-no/testpull', 
-								function(err, res, body){
-									var client= io.connect('http://localhost:6969');
+		request.put('http://admin:devonly@localhost:5984/btest\$user2-no/testpull', function(err, res, body){
+			var client= io.connect('http://localhost:6969');
 
-									client.emit('authentication', {
-										token: jwt2, name: "test2", type: 'jwt'
-									});
-									client.on('authenticated', function(err){
-										var stream = ioStream.createStream();
-										ioStream(client).emit('pull', stream);
-										testUser2db.load(stream).then(function() {
-											testUser2db.get('testpull', function(err, doc) {
-												doc.should.exist;
-												done();
-											});
-										});
-									});
-								});
+			client.emit('authentication', {
+				token: jwt2, name: "test2", type: 'jwt'
+			});
+			client.on('authenticated', function(err){
+				var stream = ioStream.createStream();
+				ioStream(client).emit('pull', stream);
+				testUser2db.load(stream).then(function() {
+					testUser2db.get('testpull', function(err, doc) {
+						doc.should.exist;
+						done();
+					});
+				});
+			});
+		});
 
 	});
 
@@ -359,7 +358,7 @@ describe("server tests", function () {
 
 		receiver.on('authenticated', function() {
 			receiver.on('shareReq', function(shareObj) {
-				shareObj.doc.should.equal('test-category');
+				shareObj.docname.should.equal('test-category');
 				receiver.disconnect();
 				done();
 			});
@@ -369,7 +368,7 @@ describe("server tests", function () {
 			token: jwt1, name: "test1", type: 'jwt'
 		});
 		sender.on('authenticated', function() {
-			sender.emit('shareReq', {username:'test$user2-no', name: 'test2', docName:'test-category'});
+			sender.emit('shareReq', {username:'test$user2-no', name: 'test2', docname:'test-category'});
 			sender.disconnect();
 		});
 	});
@@ -378,20 +377,20 @@ describe("server tests", function () {
 		var sender = io.connect('http://localhost:6969');
 
 		sender.emit('authentication', {
-			token: jwt2, name: "test2", type: 'jwt'
+			token: jwt1, name: "test1", type: 'jwt'
 		});
 
 		sender.on('authenticated', function() {
-			sender.emit('shareReq', {username:'test$user1-no', name: 'test1', docName:'test-category'});
+			sender.emit('shareReq', {username:'test$user2-no', name: 'test2', docname:'test-category'});
 			sender.disconnect();
 
 			var receiver = io.connect('http://localhost:6969');
 			receiver.emit('authentication', {
-				token: jwt1, name: "test1", type: 'jwt'
+				token: jwt2, name: "test2", type: 'jwt'
 			});
 			receiver.on('authenticated', function() {
 				receiver.on('shareReq', function(shareObj) {
-					shareObj.doc.should.equal('test-category');
+					shareObj.docname.should.equal('test-category');
 					receiver.disconnect();
 					done();
 				});
@@ -409,7 +408,7 @@ describe("server tests", function () {
 		});
 
 		sender.on('authenticated', function() {
-			sender.emit('shareReq', {username:'test$user1-no', name: 'test1', docName:'test-category2'});
+			sender.emit('shareReq', {username:'test$user1-no', name: 'test1', docname:'test-category2'});
 			sender.disconnect();
 
 			var receiver = io.connect('http://localhost:6969');
@@ -419,24 +418,17 @@ describe("server tests", function () {
 			});
 			receiver.on('authenticated', function() {
 				receiver.on('shareReq', function(shareObj) {
-					receiver.emit('shareResp', {accept: 'yes'});
+					receiver.emit('shareResp', {accept: true, request: shareObj});
 					setTimeout(function(){
 						request.get({
 							url: 'http://admin:devonly@localhost:5984/btest\$user1-no/test-category2'
 						},
 						function(err, res, body){
-							if (err) {
-								should.fail();
-								done();	
-							}
-							else {
 								var parsed = JSON.parse(body);
 								parsed.title.should.equal('user2');
 								receiver.disconnect();
 								done();
-							}
 						});	
-
 					}, 1500);
 				});
 			});
