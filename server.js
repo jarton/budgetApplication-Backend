@@ -5,8 +5,8 @@ var io = require('socket.io')(server);
 var ioStream = require('socket.io-stream');
 var PouchDB = require('pouchdb');
 var replicationStream = require('pouchdb-replication-stream');
-var Redis = require('ioredis')
-var jwt = require('jsonwebtoken')
+var Redis = require('ioredis');
+var jwt = require('jsonwebtoken');
 
 var logger = require('./logger.js');
 require('./httpApi.js')(app);
@@ -25,7 +25,6 @@ var jwtSecret = 'testsecret';
 
 // variables used for server
 var port = 6969;
-var googleTokenLength = 700;
 
 var redis = new Redis();
 
@@ -59,7 +58,7 @@ require('socketio-auth')(io, {
 				login(undefined);
 			}
 		}
-	
+
 		logger.warn(JSON.stringify(data));
 
 		if (data.token) {
@@ -79,7 +78,7 @@ require('socketio-auth')(io, {
 						socket.client.name = data.name;
 						login(undefined);
 					}
-					
+
 				});
 			}
 		}
