@@ -211,16 +211,17 @@ io.on('connection', function(socket) {
 		var shareObj = {
 			docname: data.docname,
 			sender: socket.client.username,
-			id: Date.now() + socket.client.name
+			id: Date.now() + socket.client.name,
+			income: data.income
 		};
 
 		var keyname = ':' + data.docname + ':' + data.username + ':' + socket.client.username;
 
-		var keys = []
-
+		logger.warn(data.name + data.username);
 		redis.get(data.name + ':' + data.username, function(err, result) {
 			if (result) {
 				result = JSON.parse(result);
+				logger.info(result);
 				if (result.online === true) {
 					socket.broadcast.to(result.socketid).emit('shareReq', shareObj);
 				}

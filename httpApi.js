@@ -162,7 +162,7 @@ module.exports = function(app) {
 					});
 	
 					stream.on('end', function() {
-						res.status(200).send({token: token, name: key.split('|')[0]});
+						res.status(200).send({token: token, name: key.split(':')[0]});
 					});
 				}
 				else {
