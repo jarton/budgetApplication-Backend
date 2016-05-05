@@ -5,7 +5,8 @@ var logger = require('./logger.js');
 var auth = require('./auth.js');
 var helpers = require('./helpers.js');
 var jwt = require('jsonwebtoken');
-var Redis = require('ioredis')
+var Redis = require('ioredis');
+var sifo = require('./sifo.js');
 
 /**
  * Sets up express app, and routing.
@@ -56,6 +57,10 @@ module.exports = function(app) {
 			}
 		});
 	}
+
+	app.get('/sifo', function(req, res) {
+		res.status(200).send(sifo.sifo);
+	});
 
 	/**
 	* restful route for regestering a user.
