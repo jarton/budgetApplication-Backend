@@ -162,12 +162,18 @@ module.exports = function(app) {
 						count: 100
 					});
 	
-					stream.on('data', function (resKey) {
-						key = resKey[0];
+					stream.on('data', function (resKeys) {
+						for (var i = 0; i < resKeys.length; i++){
+							logger.warn(JSON.stringify(resKeys));
+							if ((!resKeys[i].startsWith('!req')) && (resKeys[i] !== undefined)) {
+								key = resKeys[i].split(':')[0];
+							}
+						}
 					});
 	
 					stream.on('end', function() {
-						res.status(200).send({token: token, name: key.split(':')[0]});
+						logger.info('sending token and name: ' + key);
+						res.status(200).send({token: token, name: key});
 					});
 				}
 				else {
