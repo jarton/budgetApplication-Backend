@@ -241,7 +241,7 @@ io.on('connection', function(socket) {
 			if ((data.accept === true) && (result)) {
 
 				result = JSON.parse(result);
-				logger.info('user: ' + socket.client.name + ' has reponded to a share request from: ' + result.sender);
+				logger.info('user: ' + socket.client.name + ' has accepted share request from: ' + data.request.sender);
 				redis.del('!req' + keyname);
 
 				// replicate using pouchdb as adapter
@@ -254,6 +254,10 @@ io.on('connection', function(socket) {
 
 				source.replicate.to(target, options);
 				source.replicate.from(target, options);
+			}
+			else if (result) {
+				logger.info('user: ' + socket.client.name + ' has declined a share request from: ' + data.request.sender);
+				redis.del('!req' + keyname);
 			}
 		});
 	});
