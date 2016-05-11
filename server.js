@@ -210,6 +210,7 @@ io.on('connection', function(socket) {
 		logger.info('user: ' + socket.client.name + ' is sending a share request to: ' + data.name);
 		var shareObj = {
 			docname: data.docname,
+			senderName: socket.client.name,
 			sender: socket.client.username,
 			id: Date.now() + socket.client.name,
 			income: data.income
