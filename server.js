@@ -130,6 +130,7 @@ require('socketio-auth')(io, {
 		// emit share request for each in key array
 		stream.on('end', function() {
 			keys.forEach(function(key) {
+				// TODO Log error
 				redis.get(key, function (err, result) {
 					if (result) {
 						result = JSON.parse(result);
